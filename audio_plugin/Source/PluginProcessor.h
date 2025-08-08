@@ -66,8 +66,12 @@ public:
         END_OF_LIST
     };
 
-    using DSP_Order = std::array<DSP_Option, static_cast<size_t>(DSP_Option::END_OF_LIST)>;
+    static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+    juce::AudioProcessorValueTreeState apvts{
+      *this, nullptr, "Settings", createParameterLayout()
+    };
 
+    using DSP_Order = std::array<DSP_Option, static_cast<size_t>(DSP_Option::END_OF_LIST)>;
     SimpleMBComp::Fifo<DSP_Order> dspOrderFifo;
 
 private:
@@ -95,7 +99,7 @@ private:
     DSP_Choice<juce::dsp::DelayLine<float>> delay;
     DSP_Choice<juce::dsp::Phaser<float>> phaser;
     DSP_Choice<juce::dsp::Chorus<float>> chorus;
-    DSP_Choice<juce::dsp::LadderFilter<float>> override, ladderFilter;
+    DSP_Choice<juce::dsp::LadderFilter<float>> overdrive, ladderFilter;
 
     using DSP_Pointers = std::array<juce::dsp::ProcessorBase*, static_cast<size_t>(DSP_Option::END_OF_LIST)>;
 

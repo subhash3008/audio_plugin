@@ -129,6 +129,14 @@ bool Audio_pluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layo
 }
 #endif
 
+juce::AudioProcessorValueTreeState::ParameterLayout
+  Audio_pluginAudioProcessor::createParameterLayout()
+{
+  juce::AudioProcessorValueTreeState::ParameterLayout layout;
+
+  return layout;
+}
+
 void Audio_pluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
     juce::ScopedNoDenormals noDenormals;
@@ -144,6 +152,72 @@ void Audio_pluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
+    //[DONE]: add APVTS
+    
+    //TODO: create audio parameters for all dsp choices
+    //TODO: update DSP here from audio parameters
+    //TODO: save/load the settings
+    //TODO: save/load the dsp order
+    //TODO: Drag-To_Reorder GUI
+    //TODO: GUI design for each dsp instance
+    //TODO: metering
+    //TODO: prepare all DSP
+    //TODO: wet/dry knobs [BONUS]
+    //TODO: mono and stereo versions [MONO is BONUS]
+    //TODO: modulators [BONUS]
+    //TODO: thread-safe filter update [BONUS]
+    //TODO: pre/post filtering
+    //TODO: delay module [BONUS]
+
+    auto newDspOrder = DSP_Order();
+
+    // try to pull
+    while (dspOrderFifo.pull(newDspOrder))
+    {
+
+    }
+
+    // if pulled, replace dspOrder
+    if (newDspOrder != DSP_Order())
+    {
+      dspOrder = newDspOrder;
+    }
+
+    // convert dspOrder into an array of pointers
+    DSP_Pointers dspPointers;
+    for (size_t i = 0; i < dspPointers.size(); ++i)
+    {
+      switch (dspOrder[i])
+      {
+        case DSP_Option::Phase:
+          dspPointers[i] = &phaser;
+          break;
+        case DSP_Option::Chorus:
+          dspPointers[i] = &chorus;
+          break;
+        case DSP_Option::Overdrive:
+          dspPointers[i] = &overdrive;
+          break;
+        case DSP_Option::LadderFilter:
+          dspPointers[i] = &ladderFilter;
+          break;
+        case DSP_Option::END_OF_LIST:
+          jassertfalse;
+          break;
+      }
+    }
+
+    // process
+    auto block = juce::dsp::AudioBlock<float>(buffer);
+    auto context = juce::dsp::ProcessContextReplacing<float>(block);
+
+    for (size_t i = 0; i < dspPointers.size(); ++i)
+    {
+      if (nullptr != dspPointers[i])
+      {
+        dspPointers[i]->process(context);
+      }
+    }
 }
 
 //==============================================================================
