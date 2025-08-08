@@ -5,6 +5,9 @@
               cppLanguageStandard="20">
   <MAINGROUP id="RAJSUN" name="audio_plugin">
     <GROUP id="{E6B3E233-0BE6-34B8-26BF-2B500281BA43}" name="Source">
+      <GROUP id="{091C9503-8656-0B8B-3721-D23061F91B43}" name="DSP">
+        <FILE id="gIXCNJ" name="Fifo.h" compile="0" resource="0" file="../SimpleMultiBandComp/Source/DSP/Fifo.h"/>
+      </GROUP>
       <FILE id="XYCnTh" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>
       <FILE id="jf6LhT" name="PluginProcessor.h" compile="0" resource="0"
@@ -18,7 +21,8 @@
   <EXPORTFORMATS>
     <VS2022 targetFolder="Builds/VisualStudio2022">
       <CONFIGURATIONS>
-        <CONFIGURATION isDebug="1" name="Debug" targetName="audio_plugin" extraCompilerFlags="/std:c++20"/>
+        <CONFIGURATION isDebug="1" name="Debug" targetName="audio_plugin" extraCompilerFlags="/std:c++20"
+                       headerPath="../../../SimpleMultiBandComp/Source/&#10;../../../SimpleMultiBandComp/Source/DSP/&#10;../../../SimpleMultiBandComp/Source/GUI"/>
         <CONFIGURATION isDebug="0" name="Release" targetName="audio_plugin" extraCompilerFlags="/std:c++20"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
