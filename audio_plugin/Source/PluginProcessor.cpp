@@ -9,6 +9,38 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+auto getPhaserRateName() { return juce::String("Phaser RateHz"); }
+auto getPhaserCenterFreqName() { return juce::String("Phaser Center FreqHz"); }
+auto getPhaserDepthName() { return juce::String("Phaser Depth %"); }
+auto getPhaserFeedbackName() { return juce::String("Phaser Feedback %"); }
+auto getPhaserMixName() { return juce::String("Phaser Mix %"); }
+
+auto getChorusRateName() { return juce::String("Chorus RateHz"); }
+auto getChorusDepthName() { return juce::String("Chorus Depth %"); }
+auto getChorusCenterDelayName() { return juce::String("Chorus Center Delay Ms"); }
+auto getChorusFeedbackName() { return juce::String("Chorus Feedback %"); }
+auto getChorusMixName() { return juce::String("Chorus Mix %"); }
+
+auto getOverDriveSaturationName() { return juce::String("Overdrive Saturation"); }
+
+auto getLadderFilterModeName() { return juce::String("Ladder Filter Mode"); }
+auto getLadderFilterCutOffFreqName() { return juce::String("Ladder Filter Cut Off FreqHz"); }
+auto getLadderFilterResonanceName() { return juce::String("Ladder Filter Resonance"); }
+auto getLadderFilterDriveName() { return juce::String("Ladder Filter Drive"); }
+
+auto getLadderFilterChoices()
+{
+  return juce::StringArray
+  {
+    "LPF12",  // low pass,  12 dB/octave
+    "HPF12",  // high pass, 12 dB/octave
+    "BPF12",  // band pass, 12 dB/octave
+    "LPF24",  // low pass,  24 dB/octave
+    "HPF24",  // high pass, 24 dB/octave
+    "BPF24"   // band pass, 24 dB/octave
+  };
+}
+
 //==============================================================================
 Audio_pluginAudioProcessor::Audio_pluginAudioProcessor()
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -22,6 +54,59 @@ Audio_pluginAudioProcessor::Audio_pluginAudioProcessor()
                        )
 #endif
 {
+  auto floatParams = std::array
+  {
+    &phaserRateHz,
+    &phaserCenterFreqHz,
+    &phaserDepthPercent,
+    &phaserFeedbackPercent,
+    &phaserMixPercent,
+
+    &chorusRateHz,
+    &chorusDepthPercent,
+    &chorusCenterDelayMs,
+    &chorusFeedbackPercent,
+    &chorusMixPercent,
+
+    &overdriveSaturation,
+
+    &ladderFilterCutOffFreqHz,
+    &ladderFilterResonance,
+    &ladderFilterDrive
+  };
+
+  auto floatNameFuncs = std::array
+  {
+    &getPhaserRateName,
+    &getPhaserCenterFreqName,
+    &getPhaserDepthName,
+    &getPhaserFeedbackName,
+    &getPhaserMixName,
+
+    &getChorusRateName,
+    &getChorusDepthName,
+    &getChorusCenterDelayName,
+    &getChorusFeedbackName,
+    &getChorusMixName,
+
+    &getOverDriveSaturationName,
+
+    &getLadderFilterModeName,
+    &getLadderFilterCutOffFreqName,
+    &getLadderFilterResonanceName,
+    &getLadderFilterDriveName
+  };
+
+  for (size_t i = 0; i < floatParams.size(); ++i)
+  {
+    auto ptrToParamPtr = floatParams[i];
+    *ptrToParamPtr = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(floatNameFuncs[i]()));
+
+    jassert(*ptrToParamPtr != nullptr);
+  }
+
+  ladderFilterMode = dynamic_cast<juce::AudioParameterChoice*>(apvts.getParameter(getLadderFilterModeName()));
+  jassert(ladderFilterMode != nullptr);
 }
 
 Audio_pluginAudioProcessor::~Audio_pluginAudioProcessor()
@@ -133,6 +218,170 @@ juce::AudioProcessorValueTreeState::ParameterLayout
   Audio_pluginAudioProcessor::createParameterLayout()
 {
   juce::AudioProcessorValueTreeState::ParameterLayout layout;
+
+  const int versionHint = 1;
+
+  /* Phaser :
+  * rate: Hz
+  * depth: 0 to 1
+  * Center freq: Hz
+  * Feedback: -1 to 1
+  * Mix: 0 to 1
+  */
+  /* Phaser Rate in Hz */
+  auto name = getPhaserRateName();
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+    juce::ParameterID{ name, versionHint },
+    name,
+    juce::NormalisableRange<float>(0.01f, 2.f, 0.01f, 1.0f),
+    0.2f,
+    "Hz"
+  ));
+  /* Phaser Depth: 0 - 1 */
+  name = getPhaserDepthName();
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+    juce::ParameterID{ name, versionHint },
+    name,
+    juce::NormalisableRange<float>(0.05f, 1.f, 0.05f, .5f),
+    0.2f,
+    "Hz"
+  ));
+  /* Phaser Center Frequency: Audio Hz */
+  name = getPhaserCenterFreqName();
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+    juce::ParameterID{ name, versionHint },
+    name,
+    juce::NormalisableRange<float>(20.0f, 20000.f, 1.f, 1.f),
+    1000.f,
+    "Hz"
+  ));
+  /* Phaser Feedback Percent: -1 to 1 */
+  name = getPhaserFeedbackName();
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+    juce::ParameterID{ name, versionHint },
+    name,
+    juce::NormalisableRange<float>(-1.f, 1.f, 0.01f, 1.f),
+    0.0f,
+    "%"
+  ));
+  /* Phaser Mix: 0 - 1 */
+  name = getPhaserMixName();
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+    juce::ParameterID{ name, versionHint },
+    name,
+    juce::NormalisableRange<float>(0.01f, 1.f, 0.01f, 1.0f),
+    0.05f,
+    "%"
+  ));
+
+  /* Chorus :
+  * Rate: Hz
+  * Depth: 0 to 1
+  * Center Delay: ms (1-100)
+  * Feedback: -1 to 1
+  * Mix: 0 to 1
+  */
+  /* Chorus Rate in Hz */
+  name = getChorusRateName();
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+    juce::ParameterID{ name, versionHint },
+    name,
+    juce::NormalisableRange<float>(0.01f, 2.0f, .01f, 1.0f),
+    .2f,
+    "Hz"
+  ));
+  /* Chorus Depth: 0 - 1 */
+  name = getChorusDepthName();
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+    juce::ParameterID{ name, versionHint },
+    name,
+    juce::NormalisableRange<float>(0.05f, 1.f, 0.05f, .5f),
+    0.2f,
+    "Hz"
+  ));
+  /* Chorus Center Delay: Ms 1-100 */
+  name = getChorusCenterDelayName();
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+    juce::ParameterID{ name, versionHint },
+    name,
+    juce::NormalisableRange<float>(1.0f, 100.0f, 1.f, 0.f),
+    0.0f,
+    "Ms"
+  ));
+  /* Chorus Feedback Percent: -1 to 1 */
+  name = getChorusFeedbackName();
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+    juce::ParameterID{ name, versionHint },
+    name,
+    juce::NormalisableRange<float>(-1.f, 1.f, 0.01f, 1.f),
+    0.0f,
+    "%"
+  ));
+  /* Chorus Mix: 0 - 1 */
+  name = getChorusMixName();
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+    juce::ParameterID{ name, versionHint },
+    name,
+    juce::NormalisableRange<float>(0.01f, 1.f, 0.01f, 1.0f),
+    0.05f,
+    "%"
+  ));
+
+  /* Overdrive:
+  * uses the drive filter of the ladder filter class
+  * drive: 1-100
+  */
+  name = getOverDriveSaturationName();
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+    juce::ParameterID{ name, versionHint },
+    name,
+    juce::NormalisableRange<float>(1.0f, 100.0f, 0.1f, 1.0f),
+    1.0f,
+    ""
+  ));
+
+  /* Ladder Filter
+  * mode: LadderFilterMode enum
+  * cut off frequency: Hz
+  * resonance: 0-1
+  * saturation
+  */
+  /* Ladder Filter Mode */
+  name = getLadderFilterModeName();
+  auto choices = getLadderFilterChoices();
+  layout.add(std::make_unique<juce::AudioParameterChoice>(
+    juce::ParameterID{ name, versionHint },
+    name,
+    choices,
+    0U
+  ));
+  /* Ladder Filter Cut off frequency */
+  name = getLadderFilterCutOffFreqName();
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+    juce::ParameterID{ name, versionHint },
+    name,
+    juce::NormalisableRange<float>(20.0f, 20000.0f, 0.1f, 1.0f),
+    20000.0f,
+    "Hz"
+  ));
+  /* Ladder Filter Resonance */
+  name = getLadderFilterResonanceName();
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+    juce::ParameterID{ name, versionHint },
+    name,
+    juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f, 1.0f),
+    0.0f,
+    ""
+  ));
+  /* Ladder Filter Drive */
+  name = getLadderFilterResonanceName();
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+    juce::ParameterID{ name, versionHint },
+    name,
+    juce::NormalisableRange<float>(1.0f, 100.0f, 0.1f, 1.0f),
+    1.0f,
+    ""
+  ));
 
   return layout;
 }
